@@ -1,0 +1,139 @@
+---
+title: "Final Project"
+author: "Melissa Goede"
+date: "2024-04-13"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(DT)
+cannabis_use <- read_excel("C:/Users/wiind/OneDrive/School Missi/Metro State University/DATA211/cannabis use.xlsx")
+cannabis_use2 <- read_excel("C:/Users/wiind/OneDrive/School Missi/Metro State University/DATA211/cannabis use002.xlsx")
+```
+
+```{r}
+#data=cannabis_use$Time
+#format(as.POSIXct(data), format = "%H:%M")
+
+#cannabis_use1 <- cannabis_use %>%
+#  mutate(Time=format(as.POSIXct(Time), format = "%H:%M"))
+#cannabis_use1
+#cannabis_use1 %>%
+#  ggplot(aes(x=Date, y=Time)) +geom_line()
+
+cannabis_use %>%
+  mutate(Time=format(Time, format = "%H")) %>%
+  ggplot(aes(x=Time)) +geom_bar()
+```
+
+The line didn't represent the last occurrence of the day.
+```{r}
+cannabis_use %>%
+  mutate(Date=format(Date, format = "%j")) %>%
+  ggplot(aes(x=Date,y=Time)) +geom_line(aes(group=Date,color=`Strain Name`),linewidth=8) +geom_point(color="white") +theme(axis.text.x=element_text(angle=30, hjust=1)) +scale_y_datetime(date_labels = "%I %p")
+```
+
+```{r}
+str(cannabis_use)
+cannabis_use %>%
+  filter(!is.na(`First Joint of the Day`))
+
+filter(cannabis_use, `Strain Name` == "black diamond")
+```
+
+```{r}
+cannabis_use %>%
+  group_by(`Strain Name`) %>%
+  summarize(Count=n()) %>%
+  arrange(desc(Count))
+
+cannabis_use %>%
+  group_by(`Strain Name`) %>%
+  summarize(Count=n()) %>%
+  arrange(desc(Count)) %>%
+  ggplot(aes(x=Count, y=`Strain Name`)) +geom_bar(stat = "identity", aes(fill=`Strain Name`))
+
+cannabis_use %>%
+  ggplot(aes(y=`Strain Name`)) +geom_bar(aes(fill=`Strain Name`))
+```
+
+```{r}
+strain_total<-cannabis_use2[1:104,] %>%
+  group_by(StrainName) %>%
+  summarize(Total=n()) %>%
+  arrange(desc(Total))
+
+strain_total
+```
+
+240 per oz / 28 g = $8.57 per g
+```{r}
+# cannabis_use3<-cannabis_use2[1:104,] %>%
+#   filter(StrainName=="layer cake"|StrainName=="icy runtz"|StrainName=="lato pop"|StrainName=="sweet and sour"|StrainName=="gelato runtz 1"|StrainName=="gelato runtz 2") %>%
+#   select(Date, Time, StrainName) old
+
+cannabis_use3<-cannabis_use2[1:104,] %>%
+  select(Date, Time, StrainName) %>%
+  group_by(StrainName) %>%
+  filter(n()>5)
+
+cannabis_use3$GramsPerJoint<-0
+for(i in 1:97){
+  if(cannabis_use3$StrainName[i]=="layer cake"){
+    cannabis_use3$GramsPerJoint[i]<-28/22
+  }else if(cannabis_use3$StrainName[i]=="icy runtz"){
+     cannabis_use3$GramsPerJoint[i]<-14/16
+  }else if(cannabis_use3$StrainName[i]=="lato pop"){
+     cannabis_use3$GramsPerJoint[i]<-14/16
+  }else if(cannabis_use3$StrainName[i]=="sweet and sour"){
+     cannabis_use3$GramsPerJoint[i]<-14/16
+  }else if(cannabis_use3$StrainName[i]=="gelato runtz 1"){
+     cannabis_use3$GramsPerJoint[i]<-14/15
+  }else{
+     cannabis_use3$GramsPerJoint[i]<-14/12
+  }
+}
+
+cannabis_use3<-cannabis_use3 %>%
+  mutate(CostPerJoint=GramsPerJoint*(240/28)) %>%
+  mutate(GramsPerJoint=round(GramsPerJoint,digits=4)) %>%
+  mutate(CostPerJoint=round(CostPerJoint,digits=2))
+
+cannabis_use3 %>%
+       mutate(Time=format(Time,"%I:%M %p"))
+```
+
+$H_0: \mu = 60$; $H_a: \mu > 60$
+```{r}
+cannabis_use4<-cannabis_use3 %>%
+  group_by(Date) %>%
+  summarize(CostPerDay=sum(CostPerJoint)) %>%
+  filter(CostPerDay!=min(CostPerDay))
+t.test(x=cannabis_use4$CostPerDay,mu=60,alternative="greater")
+```
+Failed to reject the null hypothesis ($H_0$); there is no significant difference.
+
+```{r}
+cannabis_use4 %>%
+  mutate(Date=format(Date, format = "%j")) %>%
+  ggplot(aes(x=Date, y=CostPerDay)) +geom_bar(stat="identity",aes(fill=CostPerDay))  +scale_x_discrete(labels=format(cannabis_use4$Date, format = "%a %b %d")) +theme(axis.text.x=element_text(angle=30, hjust=1))
+
+cannabis_use3 %>%
+  mutate(Date=format(Date, format = "%j")) %>%
+  group_by(Date) %>%
+  summarize(CostPerDay=sum(CostPerJoint)) %>%
+  ggplot(aes(x=Date, y=CostPerDay)) +geom_bar(stat="identity",aes(fill=Date))  +scale_x_discrete(labels=unique(format(cannabis_use3$Date, format = "%a %b %d"))) +theme(axis.text.x=element_text(angle=30, hjust=1),legend.position="none") +scale_y_continuous(breaks=seq(0,80,20)) +labs(title="Cannabis Use")
+```
+```
+
+```{r}
+cannabis_use4 %>%
+  mutate(Date=format(Date, "%a %b %d")) %>%
+  datatable()
+```
